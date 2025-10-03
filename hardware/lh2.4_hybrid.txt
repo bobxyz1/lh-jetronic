@@ -1,0 +1,568 @@
+9/27/22 reverse engineering LH2.4 hybrid circuit functions
+
+HYB = Hybrid, 40-pin
+ECU = LH ECU 35-pin connector
+MCU = 80C535 Microcontroller, 68-pin PLCC pkg (LH2.4)
+CPU = 80C52 Microcontroller, 40-pin WDIP pkg (LH2.3)
+
+* = LH2.4 937 measurements with 12.0V supply
+
+Looking for:
+ - fuel pump in (out=3) - maybe this is derived on the hybrid based on rpm signal?
+
+--------------------------------------------------
+~9/30/22 LH2.4 bench test results
+
+HYB = Thick Film Hybrid, 40-pin
+ECU = LH ECU 35-pin connector
+MCU = 80C535 Microcontroller, 68-pin PLCC pkg
+
+Measured with Bosch 0280000937 ECU (B230FT non-egr and 12.0V bench supply
+
+Pin	Notes                                To/From
+---     ----------------------------------   --------------------------------------
+
+Power/Ground
+------------
+HYB-9   +12V
+HYB-12  +5V
+HYB-31  +5V  (LH2.4 this may be a tied-off input instead of power pin)
+HYB-35  +5V
+HYB-10  GND
+HYB-13  GND
+HYB-20  GND
+HYB-1   4.06v voltage reference output       n/c
+
+Unused?
+-------
+HYB-4   LH2.4                                n/c
+ - LH2.4 stays at ~12v
+HYB-5   LH2.4                                n/c
+ - LH2.4 stays at ~5v
+HYB-40  LH2.4                                MCU-6/P4.4
+ - LH2.4 stays at ~0v
+
+
+RPM, Reset and Fuel Pump Related
+--------------------------------
+HYB-6   LH2.4 RPM input                      ECU-1
+ - RPM input from EZK, 0.6v to 9.7v
+HYB-29  LH2.4 ezk rpm out to cpu             MCU-36/P1.0
+ - RPM output, 5v to 0v (inverting from HYB-6)
+HYB-34 something to do with rpm              n/c
+ - 4v at 0rpm, negative sawtooth at rising rpm edge, 4v down to 0.9v
+
+HYB-37  LH2.4 mcu/sram reset pin             MCU-10/RESET
+
+HYB-39  LH2.4 watchdog reset from software?  MCU-25/P3.4
+ - goes to 5v for ~50ms after powerup, then changes to ~1kHz square wave
+HYB-38  LH2.4 ???                            n/c
+ - low level signal with ~1khz/1ms tiny noisy square wave
+HYB-2   LH2.4 RPM OK status to MCU?          MCU-8/P4.6
+ - goes from 0v to 4.9v ~100us after first rising EZK RPM edge, goes to 0v ~0.77sec after RPM stops
+    (RPM from EZK stops high then goes low after ~0.73sec, HYB-2 goes low ~38ms later)
+
+HYB-3   LH2.4 fuel pump relay output         ECU-20 (after T302 and CA3272 driver)
+ - 10.2v 0rpm / 0.5v 800rpm
+
+ fuel pump turns on ~100uS after first rising EZK RPM edge, or ~0us after first falling RPM edge to MCU
+ fuel pump turns on ~50us after rising reset when RPM running, or on for ~1 second after power-on reset no RPM
+ fuel pump turns on after HYB-39 goes to 1kHz, then primes for ~1 second before going off
+ fuel pump turns off ~1 second after rpm goes to 0
+   look like fuel pump may be directly controlled by hybrid without any PumpOn MCU output signal
+ 
+Idle Air Control Related
+------------------------
+HYB-32  LH2.4 iac out to drive transistor    T301-B (middle power transistor)
+ - 0v 0rpm / ~0.7v peak pulses 800+ rpm, PWM
+HYB-17  LH2.4 iac_in input from ECU pin      ECU-33
+ - IAC 0v to 12v PWM
+HYB-22  LH2.4 iac in ?			     MCU-1/P4.0
+ - 0v when HYB-17 12v, 5v when HYB-17 0v
+HYB-33  LH2.4 iac in?                        MCU-34/P1.2
+ - 5v when HYB-17 12v / 0v when HYB-17 0v, pulse width is ~60% of HYB-22 at 0rpm, same PW at higher RPM
+
+O2 Sensor Related
+-----------------
+HYB-11  LH2.4 O2 sensor input                ECU-24
+ - O2 sensor input, benchtop switch gives: 0.1v/0.45v/0.9v
+HYB-27  LH2.4 lambda rich1                    MCU-29/P1.7
+ - 0v = rich, O2 > 0.60v / 5v = not rich, O2 < 0.5v
+HYB-28  LH2.4 lambda rich2                   MCU-30/P1.6
+ - 0v = rich, O2 > 0.68v / 5v = not rich, O2 < 0.59v
+
+5v - 12v Translation
+--------------------
+HYB-7   AC switch on input                   ECU-15
+ - 0v ac off / 9.6v ac on
+HYB-36  LH2.4 ac switch on output            MCU-64/P5.3
+ - 5v ac off / 0v ac on
+
+HYB-14  LH2.4 Auto PN switch input           ECU-30
+ - 2v PN / 11.3v D
+HYB-24  LH2.4 Auto PN switch output          MCU-65/P5.2
+ - 5v PN / 0v D
+
+HYB-8   TXD diagnostics input                MCU-22/P3.1
+ - Diag box LED - LED turns on when low, 4.7v to 0v
+HYB-30  LH2.4 TXD diagnostics in/out         ECU-12   obd box socket 2
+ - Diag box socket 2 - 12v normally, 0v when button pushed or LED on
+
+HYB-19  LH2.4 TPS IDLE input                 ECU-2
+ - 0v IDLE, 11v cruise
+HYB-21  LH2.4 TPS IDLE output                MCU-67/P5.0
+ - 5v IDLE, 0v cruise
+
+HYB-15  LH2.4 TPS WOT input                  ECU-3
+ - 0v WOT, 12v cruise
+HYB-26  LH2.4 TPS WOT output                 MCU-66/P5.1
+ - 5v WOT, 0v cruise
+
+HYB-16  LH2.4 Knock enrichment input         ECU-28
+ - 0.9v 0rpm / 7.3v 800rpm+
+HYB-25  LH2.4 Knock enrichment output        MCU-61/P5.6
+ - 5v 0rpm, 0v 800rpm+
+
+HYB-18  LH2.4 AC clutch on input             ECU-14
+ - 0v off / 11.4v on
+HYB-23  LH2.4 AC clutch on output            MCU-62/P5.5
+ - 0v off / 5v on
+
+BS301/CA3272 600mA driver chip connections:
+ - ECU-10 is low speed fan output,   from BS301/CA3272-2  OutA, InA-28 from MCU-23/P3.2
+ - ECU-11 is high speed fan output,  from BS301/CA3272-4  OutB, InB-27 from MCU-24/P3.3
+ - ECU-31 is ?,                      from BS301/CA3272-12 OutC, InC-17 from MCU-2/P4.1
+ - ECU-20 is fuel pump relay output, from BS301/CA3272-14 OutD, InD-16 from T302-C, from HYB-3
+
+---------------------------------------------------------------------------------
+~9/30/22 bench test results
+
+Pin	Notes                                To/From
+HYB-1   LH2.4 4.06 voltage reference output  n/c
+* 4.03v fixed
+
+HYB-2   LH2.4 ???                            MCU-8/P4.6
+* goes from 0v to 4.9v ~0.15s after fuel pump turns on, goes to 0v ~0.3sec before pump turns off (after 0rpm)
+
+HYB-3   LH2.3 GEAR_SHIFT output              ECU-26
+HYB-3   LH2.4 fuel pump relay output         ECU-20
+* 10.2v 0rpm / 0.5v 800rpm
+
+HYB-6   LH2.3 IDLE_STABILIZER input          ECU-33
+HYB-6   LH2.4 RPM input                      ECU-1
+* RPM input from EZK, 0.6v to 9.7v
+HYB-29  LH2.3 gate output to counter 1       CPU-P1.0
+HYB-29  LH3.1 ezk rpm out to cpu             MCU-P1.0
+HYB-29  LH2.4 ezk rpm out to cpu             MCU-36/P1.0
+* RPM output, 5v to 0v (inverting from HYB-6)
+
+HYB-7   AC switch on input                   ECU-15
+* 0v ac off / 9.6v ac on
+HYB-36  LH2.3 ac switch on output            READ_ME(1)
+HYB-36  LH2.4 ac switch on output            MCU-64/P5.3
+* 5v ac off / 0v ac on
+
+HYB-8   TXD diagnostics input                MCU-22/P3.1
+* Diag box LED - LED turns on when low, 4.7v to 0v
+HYB-30  LH2.3 HYBRID_TXD out,thru 100ohms to ECU-12   obd box socket 2
+HYB-30  LH2.4 TXD diagnostics in/out         ECU-12   obd box socket 2
+* Diag box socket 2 - 12v normally, 0v when button pushed or LED on
+
+HYB-9   +12V
+HYB-12  +5V
+HYB-35  +5V
+HYB-10  GND
+HYB-13  GND
+HYB-20  GND
+
+HYB-14  LH2.3 CODING_PLUG(2) input           ECU-30
+HYB-14  LH2.4 Auto PN switch input           ECU-30
+* 2v PN / 11.3v D
+HYB-24  LH2.3 code_plug2 output              READ_ME(0)
+HYB-24  LH2.4 Auto PN switch output          MCU-65/P5.2
+* 5v PN / 0v D
+
+HYB-19  LH2.3 Auto PN switch output          ECU-30
+HYB-19  LH3.1 tps pot related?
+HYB-19  LH2.4 TPS IDLE input                 ECU-2
+* 0v IDLE, 11v cruise
+HYB-21  LH2.3 auto pn switch output          READ_ME(7)
+HYB-21  LH3.1 ?                              MCU-P5.0
+HYB-21  LH2.4 TPS IDLE output                MCU-67/P5.0
+* 5v IDLE, 0v cruise
+
+HYB-15  TPS WOT input                        ECU-3
+* 0v WOT, 12v cruise
+HYB-26  LH2.3 tps wot switch output          READ_ME(6)
+HYB-26  LH3.1                                MCU-P5.1
+HYB-26  LH2.4                                MCU-66/P5.1
+* 5v WOT, 0v cruise
+
+HYB-16  LH2.3 TPS IDLE input                 ECU-2
+HYB-16  LH2.4 Knock enrichment input         ECU-28
+HYB-16  LH3.1 Knock enrichment input         ECU-28
+* 0.9v 0rpm / 7.3v 800rpm+
+HYB-25  LH2.3 tps idle switch output         READ_ME(5)
+HYB-25  LH3.1                                MCU-P5.6
+HYB-25  LH2.4 Knock enrichment output        MCU-61/P5.6
+* 5v 0rpm, 0v 800rpm+
+
+HYB-17  LH2.3 +5V good input                 CE01-13  LM339 comparator OUT4
+HYB-17  LH2.4 iac_in input from ECU pin      ECU-33
+* IAC 0v to 12v PWM                          ECU-33
+HYB-22  LH2.3 RESET output                   CPU-Reset
+HYB-22  LH3.1 iac in?			     MCU-P4.0
+HYB-22  LH2.4 iac in ?			     MCU-1/P4.0
+* 0v when HYB-17 12v, 5v when HYB-17 0v
+HYB-33  LH2.3 OUT1 pulse derived from P3.3
+HYB-33  LH3.1 iac out                        MCU-P1.2
+HYB-33  LH2.4 iac in?                        MCU-34/P1.2
+* 5v when HYB-17 12v / 0v when HYB-17 0v, pulse width is ~60% of HYB-22 at 0rpm, same PW at higher RPM
+HYB-32  LH2.3 to IAC drive transistor
+HYB-32  LH3.1 iac out to transistor          
+HYB-32  LH2.4 iac out to transistor          T301-B (middle power transistor)
+* 0v 0rpm / ~0.7v peak pulses 800+ rpm, PWM
+
+HYB-18  LH2.3 CODING_PLUG(6) input           ECU-28
+HYB-18  LH2.4 AC clutch on input             ECU-14
+* 0v off / 11.4v on
+HYB-23  LH2.3 code_plug6 output              READ_ME(2)
+HYB-23  LH3.1                                MCU-P5.5
+HYB-23  LH2.4 AC clutch on output            MCU-62/P5.5
+* 0v off / 5v on
+
+HYB-11  LH2.4 O2 sensor input                ECU-24
+* O2 sensor input, benchtop switch gives: 0.1v/0.45v/0.9v
+
+HYB-27  LH2.3 thru resistor from HYB-28      HYB-28
+HYB-27  LH3.1 lambda rich/lean               MCU-P1.7
+HYB-27  LH2.4 lambda rich                    MCU-29/P1.7
+* 0v = rich, O2 > 0.60v / 5v = not rich, O2 < 0.5v
+
+HYB-28  LH2.3 thru resistor from HYB-27      AD_IN5
+HYB-28  LH3.1 lambda rich/lean               MCU-P1.6
+HYB-28  LH2.4 lambda rich                    MCU-30/P1.6
+* 0v = rich, O2 > 0.68v / 5v = not rich, O2 < 0.59v
+
+HYB-31  LH2.3 IAC pwm in                     CPU-P1.1
+HYB-31  LH3.1 watchdog related?              MCU-P4.1
+HYB-31  LH2.4 +5V                            (MCU-68/VCC and others)
+
+HYB-34 something to do with rpm              n/c
+* 4v at 0rpm, negative sawtooth at rising rpm edge, 4v down to 0.9v
+
+HYB-37  LH2.3 +5V power on reset input
+HYB-37  LH3.1 mcu/sram reset pin             
+HYB-37  LH2.4 mcu/sram reset pin             MCU-10/RESET
+
+HYB-38                                       n/c
+* low level signal with ~1khz/1ms tiny noisy square wave
+
+HYB-39  LH2.3 ~1kHz input, software derived  CPU-P3.3 ?watchdog reset from software?
+HYB-39  LH3.1 watchdog related               MCU-P3.3
+HYB-39  LH2.4 watchdog related               MCU-25/P3.4
+* ???
+
+HYB-4   LH2.3 FUEL_CONSUMPTION output        ECU-31
+HYB-4   LH2.4                                n/c
+* LH2.4 stays at ~12v
+
+HYB-5   LH2.3 NOT_USED_1                     ECU-10
+HYB-5   LH3.1 tps related                    ECU-10
+HYB-5   LH2.4                                n/c
+* LH2.4 stays at ~5v
+
+HYB-40  LH2.3 gear shift input               CPU-P1.7
+HYB-40  LH3.1 fuel relay input               MCU-P4.4
+HYB-40  LH2.4 ???                            MCU-6/P4.4
+* 0v 0rpm / 0v 800rpm
+
+[LH2.4 ECU-10 is low speed fan output,  from BS301/CA3272-2  600mA driver OutA, InA-28 from MCU-23/P3.2]
+[LH2.4 ECU-11 is high speed fan output, from BS301/CA3272-4  600mA driver OutB, InB-27 from MCU-24/P3.3]
+[LH2.4 ECU-31 is ?,                     from BS301/CA3272-12 600mA driver OutC, InC-17 from MCU-2/P4.1]
+[LH2.4 ECU-20 is fuel pump relay output,from BS301/CA3272-14 600mA driver OutD, InD-16 from T302-C]
+
+---------------------------
+HYB-1   4.06 precision voltage reference output, to ADC input (not to Vref)
+HYB-2   n/c
+HYB-34  n/c
+HYB-38  n/c
+
+Reset
+HYB-17  LH2.3 +5V good input                 CE01-13  LM339 comparator OUT4
+HYB-17  LH2.4 iac_in? input                  ECU-33
+
+HYB-37  LH2.3 +5V power on reset input
+HYB-37  LH3.1 mcu/sram reset pin         
+
+HYB-22  LH2.3 RESET output                   CPU-Reset
+HYB-22  LH3.1 iac in?			     MCU-P4.0
+
+HYB-39  LH2.3 ~1kHz input, software derived  CPU-P3.3 ?watchdog reset from software?
+HYB-39  LH3.1 watchdog related               MCU-P3.3
+
+12V-to-5V level translation and conditioning
+HYB-7   AC switch on input                   ECU-15
+  HYB-36  LH2.3 ac switch on output            READ_ME(1)
+  HYB-36  LH3.1                                MCU-P5.3
+
+HYB-14  LH2.3 CODING_PLUG(2) input           ECU-30
+HYB-14  LH2.4 Auto PN switch input           ECU-30
+  HYB-24  LH2.3 code_plug2 output              READ_ME(0)
+  HYB-24  LH3.1 output from hybrid-14 to       MCU-P5.2
+
+HYB-15  TPS WOT input                        ECU-3
+  HYB-26  LH2.3 tps wot switch output          READ_ME(6)
+  HYB-26  LH3.1                                MCU-P5.1
+
+HYB-16  LH2.3 TPS IDLE input                 ECU-2
+HYB-16  LH2.4 TPS IDLE input                 ECU-2
+HYB-16  LH3.1 Knock enrichment input         ECU-28
+  HYB-25  LH2.3 tps idle switch output         READ_ME(5)
+  HYB-25  LH3.1                                MCU-P5.6
+
+HYB-18  LH2.3 CODING_PLUG(6) input           ECU-28
+HYB-18  LH2.4 AC clutch on input             ECU-14
+  HYB-23  LH2.3 code_plug6 output              READ_ME(2)
+  HYB-23  LH3.1                                MCU-P5.5
+
+HYB-19  LH2.3 Auto PN switch input           ECU-30
+HYB-19  LH2.4 ???
+HYB-19  LH3.1 tps pot related?
+  HYB-21  LH2.3 auto pn switch output          READ_ME(7)
+  HYB-21  LH3.1 ?                              MCU-P5.0
+
+5V-to-12V level translation and conditioning
+HYB-8   TXD diagnostics input                MCU-P3.1
+  HYB-30  LH2.3 HYBRID_TXD out,thru 100ohms to ECU-12   obd box pin 2
+  HYB-30  LH3.1 obd pin in/out                 ECU-12   obd box pin 2
+
+HYB-40  LH2.3 gear shift input               CPU-P1.7
+HYB-40  LH3.1 fuel relay input               MCU-P4.4
+  HYB-3   LH2.3 GEAR_SHIFT output              ECU-26
+  HYB-3   LH2.4 fuel pump relay output         ECU-20
+
+Idle Air Control
+HYB-33  LH2.3 OUT1 pulse derived from P3.3
+HYB-33  LH3.1 iac out                        MCU-P1.2
+HYB-31  LH2.3 IAC pwm in                     CPU-P1.1
+HYB-31  LH3.1 watchdog related?              MCU-P4.1
+HYB-32  LH2.3 to IAC drive transistor
+HYB-32  LH3.1 iac out to transistors            
+HYB-6   LH2.3 IDLE_STABILIZER input          ECU-33
+
+O2 Monitoring
+HYB-11  O2 sensor input                      ECU-24
+HYB-27  LH2.3 thru resistor from             HYB-28
+HYB-27  LH3.1 lambda rich/lean               MCU-P1.7
+HYB-28  LH2.3 to HYB-28 and                  AD_IN5
+HYB-28  LH3.1 lambda rich/lean               MCU-P1.6
+
+RPM
+HYB-6   LH2.4 RPM input                      ECU-1
+HYB-29  LH2.3 gate output to counter 1       CPU-P1.0
+HYB-29  LH3.1 ezk rpm out to cpu             MCU-P1.0
+
+????
+HYB-4   LH2.3 FUEL_CONSUMPTION output        ECU-31
+HYB-4   LH2.4 unused                         ECU-31
+HYB-5   LH2.3 NOT_USED_1                     ECU-10  [LH2.4 ECU-10 is cooling fan low output]
+HYB-5   LH3.1 tps related                    ECU-10
+
+
+ECU-21 FUEL_PUMP is low to energize relay
+ LH2.3 controls fuel pump from CPU P1.4 and from unknown chip B8201 pin14 (diode ORed together).
+  B8201-14 fuel pump disable output
+  B8201-2  engine speed (rpm) output to CPU P3.2/INT0-
+  B8201-9  ENGINE_SPEED (RPM) input, from ECU-1
+  B8201-15 injector pulse input, from 8253 OUT0 pin
+  B8201-13 ? input, from resistor divider between FUEL_PUMP ECU-21 and CODING_PLUG(4) ECU-29 (always gnd)
+  B8201-10 ECU-14 AC_ACTIVE (ac clutch) input
+  B8201-6  READ_ME(3) output, ac_active to CPU
+    --> guess that B8201 is some sort of timer to detect no RPM and shutoff fuel pump
+
+LH Main Relay control
+  energized when
+   - ECU-35 +12V Ign Switch is on, or
+   - CPU-P1.3 is low and +5V power is >= 4.5V
+ 
+Bosch CE 01 / CE01 is LM339 quad comparitor
+  HYB-17  LH2.3 +5V good input  CE01-13  LM339 comparator OUT4
+     CE01/LM339 pin 13 is comp out, pins 10,11 are comp inputs,
+      looks like a fixed comparison of +5V voltage level, call it "+5V good"
+
+ECU-19 goes a) thru 10K resistor to HYB-5, and b) thru 14.7K to MCU-14/P6.6/AN6
+
+-------------------------------------------------------------------------------------------
+pin	label				pin		LH2.3 Schematics
+1	maf/volt comp?	 		mcu an6	AD_IN6
+2	cel out mcu			mcu p4.6	n/c on LH2.3 schematic
+3	fuel pump relay control	(ext pin 20)	GEAR_SHIFT
+4					(ext pin 31)	FUEL_CONSUMPTION
+5	tps related lh31		(ext pin 10)	NOT_USED_1
+6	RPM in from ezk			(ext pin 1)	IDLE_STABILIZER (pin32 drives IDLE_STABILIZER transistor)
+7	ac switch			(ext pin 15)	AC_ON
+8	obd? 				mcu p3.1	P3.1/TXD
+9	power(probably 12v maybe 5)			+12V
+10	gnd (power ground?)				GND
+11	O2 input			(ext pin 24)	OXY_SENSOR
+12	5v power rail					+5V
+13	gnd 				(ext pin 5)	GND
+14	auto pnp			(ext pin 30)	CODING_PLUG(2)
+15	WOT switch in			(ext pin 3)	THROTTLE_FULL
+16	knock enrich input		(ext pin 28)	THROTTLE_IDLE
+17	iac in?				(ext pin 33)	?
+18	ac clutch			(ext pin 14)	CODING_PLUG(6)
+19	lh31 tps pot related?				STARTER (P/N for idle)
+20	gnd						GND
+21					mcu p5.0 	READ_ME(7) - starter (P/N)
+22	iac in?				mcu p4.0	RESET
+23					mcu p5.5  	READ_ME(2) - code_plug6
+24	output from hybrid pin14 to	mcu p5.2 	READ_ME(0) - code_plug2
+25					mcu p5.6 	READ_ME(5) - idle_switch
+26					mcu p5.1 	READ_ME(6) - wot_switch
+27	lambda rich/lean		mcu p1.7	thru resistor to AD_IN5
+28	lambda rich/lean		mcu p1.6	to AD_IN5
+29	ezk rpm out to cpu		mcu p1.0	P1.0
+30	obd pin in/out			(ext pin 12)	HYBRID_TXD
+31	watchdog related?		mcu p4.1	P1.1
+32	iac out to transistors				to IDLE_STABILIZER drive transistor
+33	iac out				mcu p1.2	OUT1 pulse derived from P3.3
+34	no connection					nc
+35	5v power rail					+5V
+36					mcu p5.3	READ_ME(1) - ac_on
+37	mcu/sram reset pin				?
+38	no connection					nc
+39	watchdog related		mcu p3.3	P3.3/INT1-
+40	fuel relay?			mcu p4.4	P1.7
+
+ECU connector - 
+	LH2.3 schematic	LH2.4 pinout			LH2.3 notes
+1	ENGINE_SPEED		RPM input (from EZK)		
+2	THROTTLE_IDLE		TPS Idle input			to hybrid-16, then hybrid-25 READ_ME(5) to CPU
+3	THROTTLE_FULL	TPS WOT input			to hybrid-15, then hybrid-26 READ_ME(6) to CPU
+4	BATTERY_+12v		Battery +12v			to SRAM_POWER and AD_IN1
+5	GND			Signal ground
+6	MAF_GND		MAF ground
+7	MAF_SIGNAL		MAF sensor input
+8	MAF_BURN		MAF burn-off output
+9	RELAY_+12V		+12v in from main relay
+10	NOT_USED_1		Electric fan low output
+11	AC_RELAY		Electric fan high output
+12	DATA_LINK(1)		DLC data link connector
+13	TEMP_SENSOR		Coolant temperature input	to AD_IN3
+14	AC_ACTIVE		A/C compressor on input	, then ?  READ_ME(3) to CPU
+15	AC_ON			A/C switch on input		to hybrid-7, then hybrid- READ_ME(1) to CPU
+16	DATA_LINK(2)		L-line, unused
+17	GND			Power ground
+18	INJ_SIGNAL		Injector control output
+19	CODING_PLUG(2)	code plug input		always GND, to hybrid-14, then hybrid-24 READ_ME(0) to CPU
+20	FUEL_PUMP		Fuel pump relay output	from B8201-13
+21	LH_RELAY_ENABLE	Main relay control output	driven by EZK_ON (Ign switch) or RELAY_SWITCH
+22	CHECK_ENGINE		MIL / CEL output
+23	MIXT_POT_CENTRE	AMM CO2 adj pot input		to AD_IN2
+24	OXY_SENSOR		O2 sensor input		to hybrid-11
+25	LOAD_SIGNAL		Load (TQ) output to EZK
+26	GEAR_SHIFT		Shift indicator output		from hybrid-3
+27	FUEL_TANK_VENT	Canister purge valve output
+28	CODING_PLUG(6)	Knock enrichment input	to hybrid-18, then hybrid-23 READ_ME(2) to CPU
+29	CODING_PLUG(4)	Signal ground			always GND, to AD_IN7
+30	STARTER		Park/Neutral input (for idle)	to hybrid-19, then hybrid-21 READ_ME(7) to CPU
+31	FUEL_CONSUMPTION	unused				from hybrid-4
+32	nc			Cold start valve output		
+33	IDLE_STABALIZER	IAC idle air control output	from hybrid-32, thru drive transistor, and back into hybrid-6
+34	FLAPPY			Speedometer VSS input	LH2.3 has OC output driver
+35	EZK_ON		Ignition switch +12v		to AD_IN0, to hybrid-17 ???.  BUF_EZK_ON is internal switched +5v
+
+LH2.4 30047 chip looks similar to LH2.3 B8209/3022 chip
+pin	label				pin		LH2.3 notes
+1	to mcu p5.4					READ_ME(4)
+2	in - maf burn off/lh31 idle 	mcu p4.5	P1.5
+3	out - maf burn off/lh31 idle	(ext pin 8)	MAF_BURN output
+4	out - load output to ezk	(ext pin 25) 	LOAD_SIGNAL output
+5	in - load from mcu		mcu p1.1	OUT2
+6	gnd						GND
+7	in - speedo input		(ext pin 34)	GATE1
+8	out - speedo to mcu		mcu p1.4	to Injector driver
+9	in - shift indicator		mcu p4.7	P1.6
+10	out - shift indicator		(ext pin 26)	CHECK_ENGINE
+11	gnd						GND
+12	out - CEL/MIL			(ext pin 22)	FUEL_PUMP
+13	in - CEL/MIL mcu out		mcu p4.6	B8209_pin13
+14	in - injector mcu out		mcu p1.3	P1.2
+15	out - to injector transistor	(ext pin 18)	to FUEL_TANK_VENT OC drive transistor
+16	12v power - from sys relay?			+12V
+17	out - unused to t318 base to 	(ext pin 11)	to FLAPPY OC drive transistor
+18	in -				mcu p4.2	P3.4
+19	5v power					+5V
+20	pulled loosely to gnd (220k ohm)		DATA_LINK(2)
+
+------------------------------
+From  01-26-2011, 02:06 AM  ipdown https://web.archive.org/web/20130824184510/http://forums.turbobricks.com/showpost.php?p=3580358&postcount=168
+
+  There is nothing really special about hardware except two "unknown" chips, which are already known to me to some degree - the hybrid one and one marked 30047. I have the hybrid schematic recovered and I can explain what it does in a few words:
+  1. It's provides reference voltages to the CPU ADC's
+  2. It is hardware watchdog - The CPU have to continously toggle a pin, otherwise it get's reset in a few ms.
+  3. It converts 0-1V signal from O2 sensor to 2 bits representing (but using only 3 bit combinations of them) lean/stoich/rich condition. It does it running the signal via few comparators.
+  4. It have also Tx/Rx to K-Line converter inside. When I talk K-Line I mean the following:
+UART Tx/Rx signals allows simultaneous communication between both sides. K-Line, as I call it, uses only one line for communication, which is hold at some voltage level (6-7-8V) and only one at a time can transmit data, by pulling this line to ground. The transmitter, also sees the echo of the data it has just sent on the wire. This "K-line" interface is the DLC connector pin, and it used for diagnostic via led and button thingie in the engine bay, and on later cars for OBD (The OBD on LH is very limited, useless and a bit out-of-standard, it was made just before this thing was standartized). The nice thing is that due to hardware specifics of LH cpu it allows quite fast baud rate - 187.5 Kbps, which effectively becomes a bit slower because each side have to eat their own echo each time it transmits data, and only one side can talk at a time.
+  5. The most other pins are just level shifters, translating digital signals from the CPU 5V world, to the outside 12V world, and vice versa.
+  ---
+  LH have an "spare" ADC channel, used for AMM pot, even if the car runs AMM without pot.
+  If we somehow becomes familiar enough to mess with the LH calculations, we can put wideband to that channel. I was also very frustrated about lambda signal conversion because I was already found ADC's for AMM, temp, voltage but couldn't find lambda. Then I found this 2 bit weird thing. And the bad is that some ADC's are wasted for coding plugs, when they could have do it "digitally", and used ADCs for something more clever
+
+  Btw. The AMM linearization map is not an 2D map. It is 1x256 map. When translated properly it should look like this:
+
+  I believe it is possible to use any voltage out AMM on LH 2.4, even if it is hot-film AMM.
+  In this case the AMM burn out function just will do nothing (Or blink a lamp ).
+  ---
+About the assembly - it is not hard at all to learn assembly, afterall it consist of simple instructions doing exactly one thing, for example "ADD A, B" obviously adds two registers,
+in this case content of B is added to A, and the result of addition is stored back to A.
+The hard part is to learn to recognise higher level code - how an algorithm is described with the help of a lot of small instructions. Todays 8-bit microcontrollers outperforms in many aspects the ones used in LH 2.4, but still the later has some unique features and was not chosen accidentally. After many hours poking with the code I can tell that LH 2.4 code is written in pure assembly language, not in C or some other hi-level language. Some of it's parts are heavily optimized, and Bosch engineers did the great work back then.
+
+Anyway, if someone wants to know what 8051 (SAB 80C535 is an 8051 derivate) assembly looks like and wants to learn it this is the best online resource: http://www.win.tue.nl/~aeb/comp/8051/set8051.html
+
+The SAB 80C535/515 datasheet and user manual can be downloaded from here:
+http://linuxfan.org/~ipdown/mybrick/..._datasheet.pdf
+http://linuxfan.org/~ipdown/mybrick/...ser_manual.pdf
+
+Datasheet describes electrical parameters, pinout, footprint and features,
+while user manual describes how internal features works, and how to program the processor
+peripherals
+
+At ecuproject can be found 218 EZK and 950 disassembly listings, I have them now more
+complete, but the posted ones are still very good.
+
+At last, even if I have much passion in this subject, I don't have enough free time,
+and besides disassembly and dividing what is code and what data, tracing the interconnected hardware, there is still the core of the software which is mainly unknown.
+There are a whole lot of optimized functions that are doing calculations, which have to be studied and understood, after which the program flow and logic can be deduced.
+I work on this just because I want to know how the damn thing works, so if someone wants
+to help understanding disassembly - please do!
+---
+01-27-2011 ipdown
+I'll explain how I found these constants.
+I have built a "stimulator" for LH 2.4, which provides it
+with all sensors input and rpm signal, and monitored the injector pulsewidth
+on oscilloscope. Then, having the "source" assembly of 950 ECU I focused on
+data section and code references to different values from there.
+Feeding the ECU with constant rpm, load, etc. the above constants changed
+the resulting pulsewitdth. Reg. bitsize of them, the #4 and #5 (as numbered
+in InjConst utility) could be 16 bit value, while the others are most likely
+alone bytes. They could statically scale temp., voltage or load for example,
+thus changing the pulse width, but still at least one of them is the
+real injector constant, since I literally tried every one suspicious
+referenced byte in the data section and these are that affect the resulting pulsewidth.
+There are another two which also changes injection frequency, but they are probably
+dangerous to try on a running engine.
+---------------------------
+beepee 2-8-2011
+I've taken a little break from updating XDFs for a bit; it's been hard to follow in the thread.
+
+If someone finds a bug or something noteworthy, shoot me a PM so that I can keep track of the changes... Maintaining one XDF is work, somehow I've done gotten myself into maintaining three...
+
+Meanwhile, in the true spirit of the ADHD tinkerer, I'm in process of building an Arduino-based datalogger. It is actually been much easier than I expected. Two timers, nearly one microsecond resolution, hardware interrupts, eight built in ADCs, and a serial port that will do 19200bps+ all wrapped into a tiny 8mhz package for $5.50. It's amazing. With the right code, this thing could run circles around the 8052.
+
+Going to test the code at 16mhz first, then try to proto a circuit board... I think I've got the RPM input down, next step will be injector pulsewidth. There are only two pins capable of triggering interrupts, so with RPM that will use both. I think the ADCs will suffice for the rest of the inputs.
+
+Again, my goal is to have something that can be read by MegaLogViewer in near-realtime. Considering the Innovate SSI-4 is $130 and I have most of the other components I need, I'm about $124.50 ahead! I still need a good MAP sensor though... hrm.
+----------------------------
