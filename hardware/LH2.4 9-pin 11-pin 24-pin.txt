@@ -1,0 +1,73 @@
+7/21/2020 - Bob’s notes for LH2.4 cabin connectors
+
+-------------------------------------------------------
+'89 9-pin connector are:
+1989 LH2.4 engine harness to cabin harness connector - 9 pin connector
+end view female
+7 4 1
+8 5 2
+9 6 3
+
+1 blue : switched +12v from ign switch run+start, to LH-35 EZK-6
+2 green : A/C solenoid on (and pressure sensor), to LH-14
+3 2x pink : dash CEL from LH-22 EZK-3
+4 grn/red or gray/red : A/C switch on (and A/C delay relay), LH-15
+5 blue/blk : speedometer Vss to LH-34
+6 yel/red-small : +12v from fuse 4, to O2 sensor heater (and tank pump in chassis wiring)
+7 yel/red-big : +12v to fuse 4 and to main fuel pump, from system relay 87/2
+8 violet : dash shift light from LH-26
+9 yel/blue : from ign start switch, before park/neutral switch, goes on to starter, LH-30
+
+-------------------------------------------------------
+11-pin connector - end view of female connector
+  8 5 1
+  9 6 2
+10 7 3
+11 x 4
+
+1 blue : switched +12v from ign switch run+start, to LH-35 EZK-6
+2 gray/red : A/C switch on (and A/C delay relay), LH-15
+3 yel/red-big : +12v to fuse 4 and to main fuel pump, from system relay 87/2
+4 green : A/C solenoid on (and pressure sensor), to LH-14
+5 blue/blk : speedometer Vss to LH-34
+6 violet : dash shift light from LH-26
+7 2x pink/white : dash CEL from LH-22 EZK-3
+8 yel/red-small : +12v from fuse 4, to O2 sensor heater (and tank pump in chassis wiring)
+9 yel/blue : from ign start switch, before park/neutral switch goes on to starter, LH-30
+10 red-big : from battery + fuse 
+11 red-big : from battery + fuse 
+
+To run, need minimum of 1 (switched +12v), 3 & 8 (fuel pump power), 10 & 11 (batt +12v)
+[pins 10 and 11, batt +, are additions versus 9-pin connector]
+
+-------------------------------------------------------
+Notes for 1993 "Late Version" LH2.4 engine harness to cabin harness connector - 24 pin connector
+   pin numbers zig-zag down connector (all even number pins on one side, odds on other side)
+
+pin	wire		cabin-side / engine-side / k-jet cabin connection
+----	------		-------------------------------------------------------------
+1	blue		switched +12v from ign switch/15 run+start, to LH-35, EZK-6
+2	gray-red	A/C switch on (to A/C delay relay too), to LH-15
+3	yel-red		Main fuel pump power, also thru fuse 4 to tank pump (and to O2 heater via pin8), from Fuel Pump/System relay 87/2 (pin5)
+4	2x green	A/C compressor solenoid on (used to adjust idle?), to LH-14
+5	blue-black	Vss from speedo, to LH-34
+6	violet		Dash shift light, from LH-26
+7	2x pink-white	Dash Check Engine Light, from LH-22, EZK-3
+8	yel-red small	Power from fuse 4, to heated O2 sensor (and tank pump in chassis wiring)
+9	pink		Starter switch/50, before P/N interlock, used to sense P/N for idle control, to LH-30
+
+10	red-big		from battery + fuse 30A
+11	red-big		from battery + fuse 30A, to Fuel Pump/System relay 30 (pin 3), LH-4, EZK-5
+12,13,14,15,16		N/C
+
+17	black		Dash oil pressure light, from oil pressure switch, bulkhead8-1 connector black
+18	yellow		Dash temperature gauge, from temperature sensor, bulkhead8-2 connector, yellow
+19	red		Dash alternator light, from alternator D+/61, bulkhead8-3 connector, red
+20			N/C
+21	blue-yel	Starter switch, through P/N interlock, to starter motor/50, bulkhead8-5 connector, blue-yellow
+22,23,24		N/C
+-------------------------------------------------------
+ozvolvo.org shows a black 14-pin (2x7) for 1993 LH2.4
+
+-------------------------------------------------------
+ 
